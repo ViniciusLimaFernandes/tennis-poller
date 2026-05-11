@@ -5,24 +5,38 @@ on:
     - cron: '*/5 15-17 * * 1'
   workflow_dispatch:
 
+concurrency:
+  group: tennis-poller
+  cancel-in-progress: false
+
 jobs:
   poll:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     permissions:
       contents: write
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      - name: Instalar dependências
-        run: pip install requests
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      - name: Rodar poller
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run poller
         env:
-          API_URL:   ${{ secrets.API_URL }}
-          API_FIELD: ${{ secrets.API_FIELD }}
-          WA_PHONE:  ${{ secrets.WA_PHONE }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+          COURT_ID: ${{ vars.COURT_ID }}
+          TARGET_TIMES: ${{ vars.TARGET_TIMES }}
+          BOOKING_USER_JSON: ${{ secrets.BOOKING_USER_JSON }}
+          WA_PHONE: ${{ secrets.WA_PHONE }}
           WA_APIKEY: ${{ secrets.WA_APIKEY }}
         run: python poller.py
