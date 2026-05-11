@@ -2,7 +2,7 @@ import json
 import os
 import subprocess
 import time
-from datetime import date
+from datetime import date, timedelta
 from urllib.parse import quote
 
 import requests
@@ -19,6 +19,7 @@ WA_APIKEY = os.environ["WA_APIKEY"]
 
 STATE_FILE = "state.json"
 
+BOT_HEADER = "Tenis de domingo 🎾"
 PEOPLE_COUNT = "4"
 
 ADDITIONAL_FIELDS = {
@@ -29,6 +30,20 @@ ADDITIONAL_FIELDS = {
     "neighborhood": 18392,
     "city": 18390,
 }
+
+
+def build_message(body):
+    return f"{BOT_HEADER}\n\n{body}"
+
+
+def get_next_sunday():
+    today = date.today()
+    days_until_sunday = (6 - today.weekday()) % 7
+
+    if days_until_sunday == 0:
+        days_until_sunday = 7
+
+    return today + timedelta(days=days_until_sunday)
 
 
 def request_with_retry(method, url, **kwargs):
@@ -112,8 +127,11 @@ def get_available_slots():
     return data.get("horarios_disponiveis", [])
 
 
-def is_target_slot(slot):
-    return any(slot.endswith(f"T{target}:00") for target in TARGET_TIMES)
+def is_target_slot(slot, target_date):
+    return any(
+        slot == f"{target_date}T{target.strip()}:00"
+        for target in TARGET_TIMES
+    )
 
 
 def build_booking_payload(slot):
@@ -185,8 +203,15 @@ def main():
     state = load_state()
     state = reset_state_if_needed(state)
 
+    target_date = get_next_sunday().isoformat()
+
+    print(f"Target booking date: {target_date}")
+
     available_slots = get_available_slots()
-    target_slots = [slot for slot in available_slots if is_target_slot(slot)]
+    target_slots = [
+        slot for slot in available_slots
+        if is_target_slot(slot, target_date)
+    ]
 
     print(f"Available slots: {available_slots}")
     print(f"Target slots: {target_slots}")
@@ -196,6 +221,14 @@ def main():
         save_state(state)
         commit_state()
         return
+
+    notify_whatsapp(
+        build_message(
+            "Horários disponíveis encontrados.\n"
+            "Realizando agendamento...\n\n"
+            + "\n".join(f"🕒 {slot}" for slot in target_slots)
+        )
+    )
 
     booked_now = []
     failed_now = []
@@ -224,14 +257,18 @@ def main():
 
     if booked_now:
         notify_whatsapp(
-            "🎾 Agendamento realizado com sucesso!\n\n"
-            + "\n".join(f"✅ {slot}" for slot in booked_now)
+            build_message(
+                "Agendamento realizado com sucesso!\n\n"
+                + "\n".join(f"✅ {slot}" for slot in booked_now)
+            )
         )
 
     if failed_now:
         notify_whatsapp(
-            "⚠️ Encontrei horários, mas houve falha ao tentar agendar.\n\n"
-            + "\n".join(f"❌ {item['slot']}" for item in failed_now)
+            build_message(
+                "Encontrei horários, mas houve falha ao tentar agendar.\n\n"
+                + "\n".join(f"❌ {item['slot']}" for item in failed_now)
+            )
         )
 
     save_state(state)
