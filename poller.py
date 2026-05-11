@@ -50,6 +50,7 @@ def main():
 
     if state["notified"]:
         print("🔕 Já notificado hoje. Encerrando.")
+        notify_whatsapp("🔕 Já notificado hoje. Encerrando.")
         return
 
     print("Consultando API...")
