@@ -1,0 +1,29 @@
+name: Poller Agendamento
+
+on:
+  schedule:
+    - cron: '0/5 15-16 * * 1'
+    - cron: '0/5 17 * * 1'
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências
+        run: pip install requests
+
+      - name: Rodar poller
+        env:
+          API_URL:   ${{ secrets.API_URL }}
+          API_FIELD: ${{ secrets.API_FIELD }}
+          WA_PHONE:  ${{ secrets.WA_PHONE }}
+          WA_APIKEY: ${{ secrets.WA_APIKEY }}
+        run: python poller.py
