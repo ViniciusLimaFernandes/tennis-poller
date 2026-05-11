@@ -50,7 +50,6 @@ def main():
 
     if state["notified"]:
         print("🔕 Já notificado hoje. Encerrando.")
-        notify_whatsapp("🔕 Já notificado hoje. Encerrando.")
         return
 
     print("Consultando API...")
@@ -70,7 +69,6 @@ def main():
         commit_state()
     else:
         print("❌ Nenhum horário disponível.")
-        notify_whatsapp("❌ Nenhum horário disponível.")
 
 if __name__ == "__main__":
     main()
