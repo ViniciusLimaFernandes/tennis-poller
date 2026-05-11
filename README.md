@@ -13,6 +13,54 @@ GitHub Actions → Python Poller → Tennis API → WhatsApp Notification
 - Sends WhatsApp alerts through CallMeBot
 - Prevents duplicate notifications during the same day
 
+## 🔐 Required GitHub Secrets
+
+### `BOOKING_USER_JSON`
+
+```json
+{
+  "cpf": "...",
+  "name": "...",
+  "birth_date": "...",
+  "phone": "...",
+  "email": "...",
+  "neighborhood": "...",
+  "city": "..."
+}
+```
+
+### `BASE_URL`
+
+```text
+Private booking API URL
+```
+
+### `WA_PHONE`
+
+```text
+WhatsApp phone number
+```
+
+### `WA_APIKEY`
+
+```text
+CallMeBot API key
+```
+
+## ⚙️ Required GitHub Variables
+
+### `COURT_ID`
+
+```text
+Court identifier
+```
+
+### `TARGET_TIMES`
+
+```text
+08:00,09:20
+```
+
 ## 🛠 Stack
 
 - Python
