@@ -35,7 +35,7 @@ def commit_state():
     os.system('git config user.email "bot@github.com"')
     os.system('git config user.name "Poller Bot"')
     os.system(f'git add {STATE_FILE}')
-    os.system('git commit -m "chore: atualiza state" || true')
+    os.system('git commit -m "chore: state update" || true')
     os.system('git push')
 
 def main():
