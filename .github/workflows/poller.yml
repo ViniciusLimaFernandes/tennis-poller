@@ -2,8 +2,7 @@ name: Poller Agendamento
 
 on:
   schedule:
-    - cron: '0/5 15-16 * * 1'
-    - cron: '0/5 17 * * 1'
+    - cron: '*/5 15-17 * * 1'
   workflow_dispatch:
 
 jobs:
