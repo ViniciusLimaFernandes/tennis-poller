@@ -69,6 +69,7 @@ def main():
         commit_state()
     else:
         print("❌ Nenhum horário disponível.")
+        notify_whatsapp("❌ Nenhum horário disponível.")
 
 if __name__ == "__main__":
     main()
