@@ -63,6 +63,15 @@ def request_with_retry(method, url, **kwargs):
     raise RuntimeError(f"Request failed after 3 attempts: {method.upper()} {url}")
 
 
+def get_booking_users():
+    users = json.loads(BOOKING_USER_JSON)
+
+    if not isinstance(users, list) or not users:
+        raise ValueError("BOOKING_USER_JSON must be a non-empty array")
+
+    return users
+
+
 def load_state():
     if not os.path.exists(STATE_FILE):
         return {
@@ -134,9 +143,7 @@ def is_target_slot(slot, target_date):
     )
 
 
-def build_booking_payload(slot):
-    user = json.loads(BOOKING_USER_JSON)
-
+def build_booking_payload(slot, user):
     return {
         "id_servico": COURT_ID,
         "data_hora_agendamento": slot,
@@ -178,9 +185,9 @@ def build_booking_payload(slot):
     }
 
 
-def book_slot(slot):
+def book_slot(slot, user):
     url = f"{BASE_URL}/{COURT_ID}"
-    payload = build_booking_payload(slot)
+    payload = build_booking_payload(slot, user)
 
     response = request_with_retry("POST", url, json=payload)
     data = response.json()
@@ -200,6 +207,8 @@ def notify_whatsapp(message):
 
 
 def main():
+    booking_users = get_booking_users()
+
     state = load_state()
     state = reset_state_if_needed(state)
 
@@ -222,6 +231,13 @@ def main():
         commit_state()
         return
 
+    if len(target_slots) > len(booking_users):
+        print(
+            f"Found {len(target_slots)} target slots, but only "
+            f"{len(booking_users)} booking users. Limiting bookings."
+        )
+        target_slots = target_slots[:len(booking_users)]
+
     notify_whatsapp(
         build_message(
             "Horários disponíveis encontrados.\n"
@@ -233,13 +249,15 @@ def main():
     booked_now = []
     failed_now = []
 
-    for slot in target_slots:
+    for index, slot in enumerate(target_slots):
         if slot in state.get("booked_slots", []):
             print(f"Slot already booked previously: {slot}")
             continue
 
+        user = booking_users[index]
+
         try:
-            success, response_data = book_slot(slot)
+            success, response_data = book_slot(slot, user)
 
             if success:
                 print(f"Booked slot successfully: {slot}")
