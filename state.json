@@ -1,8 +1,4 @@
 {
-  "last_run_date": "2026-05-12",
-  "booked_slots": [],
-  "failed_slots": [
-    "2026-05-17T14:20:00",
-    "2026-05-17T15:40:00"
-  ]
+  "last_run_date": null,
+  "notified": false
 }
