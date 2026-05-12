@@ -34,6 +34,7 @@ jobs:
       - name: Run poller
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
+          BOOKING_PAGE_BASE_URL: ${{ vars.BOOKING_PAGE_BASE_URL }}
           COURT_ID: ${{ vars.COURT_ID }}
           TARGET_TIMES: ${{ vars.TARGET_TIMES }}
           BOOKING_USER_JSON: ${{ secrets.BOOKING_USER_JSON }}
