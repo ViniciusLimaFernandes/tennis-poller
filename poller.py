@@ -8,6 +8,7 @@ from urllib.parse import quote
 import requests
 
 BASE_URL = os.environ["BASE_URL"]
+BOOKING_PAGE_BASE_URL = os.environ["BOOKING_PAGE_BASE_URL"]
 COURT_ID = int(os.environ.get("COURT_ID", "2186"))
 
 WA_PHONE = os.environ["WA_PHONE"]
@@ -111,6 +112,10 @@ def notify_whatsapp(message):
     request_with_retry("GET", url)
 
 
+def get_booking_page_url():
+    return f"{BOOKING_PAGE_BASE_URL}/{COURT_ID}"
+
+
 def main():
     state = load_state()
     state = reset_state_if_needed(state)
@@ -133,9 +138,10 @@ def main():
         build_message(
             "Horários disponíveis encontrados!\n\n"
             + "\n".join(f"🕒 {slot}" for slot in available_slots)
+            + f"\n\nAcesse para agendar:\n{get_booking_page_url()}"
         )
     )
-
+    
     state["notified"] = True
     save_state(state)
     commit_state()
