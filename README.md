@@ -9,57 +9,44 @@ GitHub Actions → Python Poller → Tennis API → WhatsApp Notification
 ```
 
 - Runs automatically every 5 minutes using GitHub Actions
-- Checks the scheduling API for available courts
-- Sends WhatsApp alerts through CallMeBot
+- Monitors tennis court availability through the scheduling API
+- Sends WhatsApp alerts whenever available slots are found
+- Includes the direct booking page link in the notification
 - Prevents duplicate notifications during the same day
 
 ## 🔐 Required GitHub Secrets
 
-### `BOOKING_USER_JSON`
-
-```json
-{
-  "cpf": "...",
-  "name": "...",
-  "birth_date": "...",
-  "phone": "...",
-  "email": "...",
-  "neighborhood": "...",
-  "city": "..."
-}
-```
-
 ### `BASE_URL`
 
-```text
-Private booking API URL
-```
+Private API base URL used to fetch available slots.
 
 ### `WA_PHONE`
 
-```text
-WhatsApp phone number
-```
+WhatsApp phone number used by CallMeBot.
 
 ### `WA_APIKEY`
 
-```text
-CallMeBot API key
-```
+CallMeBot API key.
+
+---
 
 ## ⚙️ Required GitHub Variables
 
 ### `COURT_ID`
 
-```text
-Court identifier
-```
+Tennis court identifier.
 
-### `TARGET_TIMES`
+Example:
 
 ```text
-08:00,09:20
+2186
 ```
+
+### `BOOKING_PAGE_BASE_URL`
+
+Booking page base URL.
+
+---
 
 ## 🛠 Stack
 
