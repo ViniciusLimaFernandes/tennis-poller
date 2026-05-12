@@ -2,48 +2,23 @@ import json
 import os
 import subprocess
 import time
-from datetime import date, timedelta
+from datetime import date
 from urllib.parse import quote
 
 import requests
 
 BASE_URL = os.environ["BASE_URL"]
-
 COURT_ID = int(os.environ.get("COURT_ID", "2186"))
-TARGET_TIMES = os.environ.get("TARGET_TIMES", "08:00,09:20").split(",")
-
-BOOKING_USER_JSON = os.environ["BOOKING_USER_JSON"]
 
 WA_PHONE = os.environ["WA_PHONE"]
 WA_APIKEY = os.environ["WA_APIKEY"]
 
 STATE_FILE = "state.json"
-
 BOT_HEADER = "Tenis de domingo 🎾"
-PEOPLE_COUNT = "4"
-
-ADDITIONAL_FIELDS = {
-    "birth_date": 18388,
-    "phone": 18387,
-    "people_count": 18389,
-    "email": 18391,
-    "neighborhood": 18392,
-    "city": 18390,
-}
 
 
 def build_message(body):
     return f"{BOT_HEADER}\n\n{body}"
-
-
-def get_next_sunday():
-    today = date.today()
-    days_until_sunday = (6 - today.weekday()) % 7
-
-    if days_until_sunday == 0:
-        days_until_sunday = 7
-
-    return today + timedelta(days=days_until_sunday)
 
 
 def request_with_retry(method, url, **kwargs):
@@ -63,21 +38,11 @@ def request_with_retry(method, url, **kwargs):
     raise RuntimeError(f"Request failed after 3 attempts: {method.upper()} {url}")
 
 
-def get_booking_users():
-    users = json.loads(BOOKING_USER_JSON)
-
-    if not isinstance(users, list) or not users:
-        raise ValueError("BOOKING_USER_JSON must be a non-empty array")
-
-    return users
-
-
 def load_state():
     if not os.path.exists(STATE_FILE):
         return {
             "last_run_date": None,
-            "booked_slots": [],
-            "failed_slots": [],
+            "notified": False,
         }
 
     with open(STATE_FILE, "r", encoding="utf-8") as file:
@@ -114,11 +79,10 @@ def reset_state_if_needed(state):
     today = str(date.today())
 
     if state.get("last_run_date") != today:
-        print("New day detected. Resetting state.")
+        print("New day detected. Resetting notification state.")
         return {
             "last_run_date": today,
-            "booked_slots": [],
-            "failed_slots": [],
+            "notified": False,
         }
 
     return state
@@ -136,65 +100,6 @@ def get_available_slots():
     return data.get("horarios_disponiveis", [])
 
 
-def is_target_slot(slot, target_date):
-    return any(
-        slot == f"{target_date}T{target.strip()}:00"
-        for target in TARGET_TIMES
-    )
-
-
-def build_booking_payload(slot, user):
-    return {
-        "id_servico": COURT_ID,
-        "data_hora_agendamento": slot,
-        "is_app": False,
-        "cpf": user["cpf"],
-        "nome": user["name"],
-        "campos_adicionais": [
-            {
-                "id": ADDITIONAL_FIELDS["birth_date"],
-                "valor": user["birth_date"],
-                "id_metadado_servico": 0,
-            },
-            {
-                "id": ADDITIONAL_FIELDS["phone"],
-                "valor": user["phone"],
-                "id_metadado_servico": 0,
-            },
-            {
-                "id": ADDITIONAL_FIELDS["people_count"],
-                "valor": PEOPLE_COUNT,
-                "id_metadado_servico": 0,
-            },
-            {
-                "id": ADDITIONAL_FIELDS["email"],
-                "valor": user["email"],
-                "id_metadado_servico": 0,
-            },
-            {
-                "id": ADDITIONAL_FIELDS["neighborhood"],
-                "valor": user["neighborhood"],
-                "id_metadado_servico": 0,
-            },
-            {
-                "id": ADDITIONAL_FIELDS["city"],
-                "valor": user["city"],
-                "id_metadado_servico": 0,
-            },
-        ],
-    }
-
-
-def book_slot(slot, user):
-    url = f"{BASE_URL}/{COURT_ID}"
-    payload = build_booking_payload(slot, user)
-
-    response = request_with_retry("POST", url, json=payload)
-    data = response.json()
-
-    return data.get("sucesso", False), data
-
-
 def notify_whatsapp(message):
     url = (
         "https://api.callmebot.com/whatsapp.php"
@@ -207,88 +112,31 @@ def notify_whatsapp(message):
 
 
 def main():
-    booking_users = get_booking_users()
-
     state = load_state()
     state = reset_state_if_needed(state)
 
-    target_date = get_next_sunday().isoformat()
-
-    print(f"Target booking date: {target_date}")
+    if state.get("notified"):
+        print("Already notified today. Exiting.")
+        return
 
     available_slots = get_available_slots()
-    target_slots = [
-        slot for slot in available_slots
-        if is_target_slot(slot, target_date)
-    ]
 
     print(f"Available slots: {available_slots}")
-    print(f"Target slots: {target_slots}")
 
-    if not target_slots:
-        print("No target slots found.")
+    if not available_slots:
+        print("No available slots found.")
         save_state(state)
         commit_state()
         return
 
-    if len(target_slots) > len(booking_users):
-        print(
-            f"Found {len(target_slots)} target slots, but only "
-            f"{len(booking_users)} booking users. Limiting bookings."
-        )
-        target_slots = target_slots[:len(booking_users)]
-
     notify_whatsapp(
         build_message(
-            "Horários disponíveis encontrados.\n"
-            "Realizando agendamento...\n\n"
-            + "\n".join(f"🕒 {slot}" for slot in target_slots)
+            "Horários disponíveis encontrados!\n\n"
+            + "\n".join(f"🕒 {slot}" for slot in available_slots)
         )
     )
 
-    booked_now = []
-    failed_now = []
-
-    for index, slot in enumerate(target_slots):
-        if slot in state.get("booked_slots", []):
-            print(f"Slot already booked previously: {slot}")
-            continue
-
-        user = booking_users[index]
-
-        try:
-            success, response_data = book_slot(slot, user)
-
-            if success:
-                print(f"Booked slot successfully: {slot}")
-                booked_now.append(slot)
-                state["booked_slots"].append(slot)
-            else:
-                print(f"Failed to book slot: {slot} - {response_data}")
-                failed_now.append({"slot": slot, "response": response_data})
-                state["failed_slots"].append(slot)
-
-        except Exception as error:
-            print(f"Exception while booking slot {slot}: {error}")
-            failed_now.append({"slot": slot, "error": str(error)})
-            state["failed_slots"].append(slot)
-
-    if booked_now:
-        notify_whatsapp(
-            build_message(
-                "Agendamento realizado com sucesso!\n\n"
-                + "\n".join(f"✅ {slot}" for slot in booked_now)
-            )
-        )
-
-    if failed_now:
-        notify_whatsapp(
-            build_message(
-                "Encontrei horários, mas houve falha ao tentar agendar.\n\n"
-                + "\n".join(f"❌ {item['slot']}" for item in failed_now)
-            )
-        )
-
+    state["notified"] = True
     save_state(state)
     commit_state()
 
