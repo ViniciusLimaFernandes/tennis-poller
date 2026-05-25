@@ -1,4 +1,4 @@
-name: Poller Agendamento
+name: Tennis Poller V2
 
 on:
   schedule:
