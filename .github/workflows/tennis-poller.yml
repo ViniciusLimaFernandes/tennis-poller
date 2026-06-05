@@ -2,7 +2,7 @@ name: Tennis Poller V2
 
 on:
   schedule:
-    - cron: '* * * * *'
+    - cron: "* 14-18 * * 1,2"
   workflow_dispatch:
 
 concurrency:
